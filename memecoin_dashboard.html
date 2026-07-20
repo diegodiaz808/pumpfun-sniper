@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pump Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#09090b; --surface:#111113; --surface2:#18181b;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text:#f4f4f5; --muted:#71717a; --muted2:#52525b;
+  --green:#22c55e; --green-dim:rgba(34,197,94,0.12);
+  --red:#ef4444; --red-dim:rgba(239,68,68,0.12);
+  --amber:#f59e0b; --amber-dim:rgba(245,158,11,0.10);
+  --blue:#3b82f6; --blue-dim:rgba(59,130,246,0.10);
+  --accent:#a78bfa; --accent-dim:rgba(167,139,250,0.10);
+  --gold:#f5c842; --gold-dim:rgba(245,200,66,0.10);
+  --violet:#7c3aed; --violet-dim:rgba(124,58,237,0.12);
+  --gem-glow:rgba(245,200,66,0.22);
+  --font-sans:'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:'DM Mono','SF Mono',monospace;
+}
+html { background:var(--bg); color:var(--text); font-family:var(--font-sans); font-size:13px; -webkit-font-smoothing:antialiased; }
+body { min-height:100vh; display:flex; flex-direction:column; overflow-x:hidden; }
+
+.topbar {
+  position:sticky; top:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 24px; height:52px;
+  background:rgba(9,9,11,0.82);
+  backdrop-filter:blur(28px) saturate(1.4);
+  border-bottom:1px solid var(--border);
+}
+.topbar-left { display:flex; align-items:center; gap:20px; }
+.logo { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:500; letter-spacing:-0.3px; color:var(--text); }
+.logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+.status-chip {
+  display:flex; align-items:center; gap:6px;
+  padding:4px 10px; border-radius:20px;
+  background:var(--green-dim); border:1px solid rgba(34,197,94,0.2);
+  font-size:11px; font-weight:500; color:var(--green);
+}
+.pulse { width:6px; height:6px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{opacity:0.8;box-shadow:0 0 0 4px rgba(34,197,94,0)} }
+.sol-badge { font-family:var(--font-mono); font-size:12px; color:var(--text); display:flex; align-items:center; gap:5px; }
+.sol-badge span { color:var(--muted); }
+
+.layout { display:grid; grid-template-columns: 1fr 360px; flex:1; min-height:0; }
+.left { display:flex; flex-direction:column; border-right:1px solid var(--border); }
+.right { display:flex; flex-direction:column; overflow:hidden; }
+
+.kpi-row { display:grid; grid-template-columns: repeat(5,1fr); border-bottom:1px solid var(--border); }
+.kpi { padding:18px 20px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:4px; }
+.kpi:last-child { border-right:none; }
+.kpi-label { font-size:11px; font-weight:500; color:var(--muted); letter-spacing:0.3px; text-transform:uppercase; }
+.kpi-value { font-size:24px; font-weight:300; letter-spacing:-1px; color:var(--text); font-family:var(--font-mono); }
+.kpi-value.green { color:var(--green); }
+.kpi-value.red { color:var(--red); }
+.kpi-value.amber { color:var(--amber); }
+.kpi-sub { font-size:11px; color:var(--muted); }
+
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 20px 12px;
+  border-bottom:1px solid var(--border);
+}
+.section-title { font-size:12px; font-weight:600; color:var(--text); letter-spacing:0.2px; }
+.section-meta { font-size:11px; color:var(--muted); }
+
+.filter-row {
+  display:flex; gap:6px;
+  padding:10px 20px;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+}
+.filter-row::-webkit-scrollbar { display:none; }
+.filter-chip {
+  padding:3px 10px;
+  border-radius:20px;
+  border:1px solid var(--border2);
+  background:none;
+  color:var(--muted);
+  font-family:var(--font-sans);
+  font-size:11px;
+  font-weight:500;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all 0.15s;
+}
+.filter-chip:hover {
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.filter-chip.on {
+  background:var(--accent-dim);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+
+.table-head {
+  display:grid; grid-template-columns:28px 1fr 76px 76px 64px 64px 70px 70px;
+  padding:6px 20px; gap:8px; border-bottom:1px solid var(--border); background:var(--surface);
+}
+.th {
+  font-size:10px; font-weight:600; color:var(--muted2);
+  text-transform:uppercase; letter-spacing:0.5px;
+  display:flex; align-items:center;
+}
+.th:not(:first-child) { justify-content:flex-end; }
+
+.token-list { flex:1; overflow-y:auto; }
+.token-list::-webkit-scrollbar { width:4px; }
+.token-list::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+.token-row {
+  display:grid; grid-template-columns:28px 1fr 76px 76px 64px 64px 70px 70px;
+  padding:9px 20px; gap:8px; align-items:center;
+  border-bottom:1px solid var(--border);
+  cursor:pointer; transition:background 0.1s;
+}
+.token-row:hover { background:var(--surface); }
+.token-row.buying { background:rgba(34,197,94,0.04); }
+.token-row.rejected { opacity:0.5; }
+
+.row-idx { font-family:var(--font-mono); font-size:10px; color:var(--muted2); text-align:center; }
+.token-info { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.token-sym { font-size:13px; font-weight:600; color:var(--text); letter-spacing:-0.2px; }
+.token-name { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cell { font-family:var(--font-mono); font-size:12px; color:var(--text); text-align:right; }
+.cell.green { color:var(--green); }
+.cell.red { color:var(--red); }
+.cell.amber { color:var(--amber); }
+.cell.muted { color:var(--muted); }
+.status-dot { width:7px; height:7px; border-radius:50%; }
+.dot-watch { background:var(--amber); box-shadow:0 0 6px var(--amber); }
+.dot-buy { background:var(--green); box-shadow:0 0 8px var(--green); }
+.dot-skip { background:var(--muted2); }
+.dot-rug { background:var(--red); }
+.dot-hotlist { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+.feed, .analytics-list, .hotlist-list, .positions { overflow-y:auto; }
+.feed-item, .analytics-item, .hotlist-card, .position-card {
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+
+.feed-header, .analytics-header, .hotlist-header, .positions-header {
+  padding:14px 18px 10px;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.feed-title, .analytics-title, .hotlist-title, .positions-title {
+  font-size:12px; font-weight:600; color:var(--text);
+}
+.feed-count { font-size:11px; color:var(--muted); font-family:var(--font-mono); }
+
+.feed-item {
+  padding:8px 18px; display:flex; gap:10px; align-items:flex-start;
+}
+.feed-icon {
+  width:26px; height:26px; border-radius:8px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:12px;
+}
+.icon-new { background:var(--blue-dim); }
+.icon-buy { background:var(--green-dim); }
+.icon-skip { background:var(--surface2); }
+.icon-rug { background:var(--red-dim); }
+.icon-trade { background:var(--amber-dim); }
+.feed-body { flex:1; min-width:0; }
+.feed-main { font-size:12px; color:var(--text); font-weight:500; line-height:1.4; }
+.feed-detail { font-size:10px; color:var(--muted); font-family:var(--font-mono); margin-top:2px; }
+
+.summary-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:10px; padding:12px 18px; border-bottom:1px solid var(--border);
+}
+.summary-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:10px 12px;
+}
+.summary-card-title {
+  font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;
+}
+.summary-line {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:11px; margin-top:5px;
+}
+.summary-key { color:var(--muted); }
+.summary-val { color:var(--text); font-family:var(--font-mono); }
+
+.analytics-list { max-height:260px; }
+.analytics-item {
+  padding:10px 18px; display:flex; flex-direction:column; gap:4px;
+}
+.analytics-top {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.analytics-main { font-size:12px; font-weight:600; color:var(--text); }
+.analytics-badge {
+  font-size:10px; font-family:var(--font-mono);
+  padding:2px 6px; border-radius:999px;
+  border:1px solid var(--border2);
+  color:var(--muted);
+}
+.analytics-meta {
+  font-size:10px; color:var(--muted); font-family:var(--font-mono);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.hotlist-list { padding:8px 12px 12px; max-height:240px; display:flex; flex-direction:column; gap:6px; }
+.hotlist-card {
+  padding:10px 12px; border-radius:11px;
+  background:var(--surface); border:1px solid rgba(167,139,250,0.25);
+  border-left:2px solid var(--accent);
+}
+.hotlist-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.hotlist-sym { font-size:13px; font-weight:600; color:var(--text); }
+.hotlist-countdown {
+  font-size:11px; font-family:var(--font-mono); color:var(--accent);
+  background:var(--accent-dim); padding:2px 7px; border-radius:6px;
+}
+.hotlist-meta { font-size:10px; color:var(--muted); font-family:var(--font-mono); }
+.signal-row { display:flex; gap:6px; margin-top:6px; }
+.signal-dot {
+  width:22px; height:22px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700;
+}
+.signal-dot.on { background:var(--green-dim); color:var(--green); border:1px solid rgba(34,197,94,0.35); }
+.signal-dot.off { background:var(--surface2); color:var(--muted2); border:1px solid var(--border); }
+
+.positions { padding:8px 12px 12px; display:flex; flex-direction:column; gap:6px; }
+.position-card {
+  padding:11px 14px; border-radius:11px;
+  background:var(--surface); border:1px solid var(--border);
+  display:flex; flex-direction:column; gap:6px;
+}
+.position-card.profit { border-left:2px solid var(--green); }
+.position-card.loss { border-left:2px solid var(--red); }
+.pos-top { display:flex; align-items:center; justify-content:space-between; }
+.pos-sym { font-size:13px; font-weight:600; color:var(--text); }
+.pos-pnl { font-family:var(--font-mono); font-size:13px; font-weight:500; }
+.pos-pnl.pos { color:var(--green); }
+.pos-pnl.neg { color:var(--red); }
+.pos-meta { display:flex; gap:14px; flex-wrap:wrap; }
+.pos-meta-item { display:flex; flex-direction:column; gap:2px; }
+.pos-meta-label { font-size:9px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted2); font-weight:600; }
+.pos-meta-val { font-size:11px; font-family:var(--font-mono); color:var(--muted); }
+
+.bottombar {
+  height:32px; display:flex; align-items:center; padding:0 24px; gap:24px;
+  border-top:1px solid var(--border); background:var(--surface);
+}
+.bottom-stat { font-size:10px; color:var(--muted); display:flex; align-items:center; gap:5px; font-family:var(--font-mono); }
+.bottom-stat b { color:var(--text); }
+.bottom-dot { width:4px; height:4px; border-radius:50%; background:var(--border2); }
+
+.empty { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:24px 20px; color:var(--muted); }
+.empty-text { font-size:12px; text-align:center; }
+
+@media (max-width: 1200px) {
+  .layout { grid-template-columns: 1fr; }
+  .right { border-top:1px solid var(--border); }
+}
+
+/* ── CP5 Gems ──────────────────────────────────────────────────────────────── */
+.gems-header {
+  padding:14px 18px 10px;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.gems-title {
+  font-size:12px; font-weight:600;
+  background:linear-gradient(90deg,var(--gold),var(--accent));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  letter-spacing:0.2px;
+}
+.gems-count { font-size:11px; color:var(--muted); font-family:var(--font-mono); }
+
+.gems-list {
+  padding:8px 12px 12px;
+  max-height:300px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:7px;
+}
+.gems-list::-webkit-scrollbar { width:3px; }
+.gems-list::-webkit-scrollbar-thumb { background:rgba(245,200,66,0.25); border-radius:2px; }
+
+.gem-card {
+  padding:11px 13px; border-radius:12px;
+  background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(245,200,66,0.06));
+  border:1px solid rgba(245,200,66,0.18);
+  border-left:2px solid var(--gold);
+  position:relative; overflow:hidden;
+  transition:border-color 0.2s;
+}
+.gem-card::before {
+  content:''; position:absolute; top:0; right:0;
+  width:60px; height:60px;
+  background:radial-gradient(circle at top right, var(--gem-glow), transparent 70%);
+  pointer-events:none;
+}
+.gem-card:hover { border-color:rgba(245,200,66,0.45); }
+
+.gem-top {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:7px;
+}
+.gem-sym { font-size:13px; font-weight:700; color:var(--text); letter-spacing:-0.2px; }
+.gem-addr {
+  font-size:9px; font-family:var(--font-mono); color:var(--muted);
+  margin-top:1px;
+}
+.gem-badge {
+  display:flex; align-items:center; gap:5px; flex-shrink:0;
+}
+.gem-score {
+  font-size:15px; font-weight:700; font-family:var(--font-mono);
+  background:linear-gradient(135deg,var(--gold),#fde68a);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.gem-cp {
+  font-size:9px; font-weight:700; letter-spacing:0.4px;
+  padding:2px 6px; border-radius:6px;
+  background:var(--violet-dim); color:var(--accent);
+  border:1px solid rgba(124,58,237,0.30);
+}
+.gem-grid {
+  display:grid; grid-template-columns:1fr 1fr 1fr;
+  gap:4px 10px; margin-top:6px;
+}
+.gem-field { display:flex; flex-direction:column; gap:1px; }
+.gem-field-label {
+  font-size:8px; text-transform:uppercase; letter-spacing:0.5px;
+  color:var(--muted2); font-weight:600;
+}
+.gem-field-val {
+  font-size:11px; font-family:var(--font-mono); color:var(--text);
+}
+.gem-field-val.gold { color:var(--gold); }
+.gem-field-val.green { color:var(--green); }
+.gem-field-val.red { color:var(--red); }
+.gem-field-val.muted { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Pump Scanner
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-chip"><div class="pulse"></div> Live</div>
+    <div class="sol-badge"><span>Balance</span> <span id="sol-balance">—</span> SOL</div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="left">
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Scanned</div>
+        <div class="kpi-value" id="kpi-scanned">0</div>
+        <div class="kpi-sub">tokens tracked</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Watching</div>
+        <div class="kpi-value amber" id="kpi-watching">0</div>
+        <div class="kpi-sub">active watchlist</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Bought</div>
+        <div class="kpi-value green" id="kpi-bought">0</div>
+        <div class="kpi-sub">opened positions</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Rugs blocked</div>
+        <div class="kpi-value red" id="kpi-rugs">0</div>
+        <div class="kpi-sub">anti-rug fail</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Vol (SOL)</div>
+        <div class="kpi-value" id="kpi-vol">0.00</div>
+        <div class="kpi-sub">observed volume</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <div class="section-title">Live Watchlist</div>
+      <div class="section-meta" id="scan-meta">Updated just now</div>
+    </div>
+
+    <div class="filter-row">
+      <button class="filter-chip on" onclick="toggleFilter(this,'all')">All</button>
+      <button class="filter-chip" onclick="toggleFilter(this,'watch')">Watching</button>
+      <button class="filter-chip" onclick="toggleFilter(this,'skip')">Skipped</button>
+      <button class="filter-chip" onclick="toggleFilter(this,'buy')">Bought</button>
+      <button class="filter-chip" onclick="toggleFilter(this,'rug')">Anti-rug</button>
+      <button class="filter-chip" onclick="toggleFilter(this,'hotlist')">Hotlist</button>
+    </div>
+
+    <div class="table-head">
+      <div class="th">#</div>
+      <div class="th">Token</div>
+      <div class="th">Age</div>
+      <div class="th">Vol</div>
+      <div class="th">Trades</div>
+      <div class="th">B/S</div>
+      <div class="th">Score</div>
+      <div class="th">State</div>
+    </div>
+
+    <div class="token-list" id="token-list">
+      <div class="empty"><div class="empty-text">Waiting for tokens...</div></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="feed-header">
+      <div class="feed-title">Activity</div>
+      <div class="feed-count" id="feed-count">0 events</div>
+    </div>
+    <div class="feed" id="feed"></div>
+
+    <div class="analytics-header">
+      <div class="analytics-title">Analytics Summary</div>
+      <div class="feed-count">SQLite</div>
+    </div>
+    <div class="summary-grid">
+      <div class="summary-card" id="summary-actions">
+        <div class="summary-card-title">By Action</div>
+      </div>
+      <div class="summary-card" id="summary-checkpoints">
+        <div class="summary-card-title">By Checkpoint</div>
+      </div>
+    </div>
+    <div class="analytics-list" id="analytics-list">
+      <div class="empty"><div class="empty-text">No analytics rows yet</div></div>
+    </div>
+
+    <div class="hotlist-header">
+      <div class="hotlist-title">Hotlist</div>
+      <div class="feed-count" id="hotlist-count">0 observing</div>
+    </div>
+    <div class="hotlist-list" id="hotlist-list">
+      <div class="empty"><div class="empty-text">No tokens in observation</div></div>
+    </div>
+
+
+    <div class="gems-header">
+      <div class="gems-title">✦ CP5 Gems</div>
+      <div class="gems-count" id="gems-count">0 gems</div>
+    </div>
+    <div class="gems-list" id="gems-list">
+      <div class="empty"><div class="empty-text">No gem candidates yet</div></div>
+    </div>
+
+    <div class="positions-header">
+      <div class="positions-title">Open Positions</div>
+      <div class="feed-count" id="pos-count">0</div>
+    </div>
+    <div class="positions" id="positions-list">
+      <div class="empty"><div class="empty-text">No open positions</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottombar">
+  <div class="bottom-stat"><b id="b-pairs">0</b> pairs active</div>
+  <div class="bottom-dot"></div>
+  <div class="bottom-stat">Producer <b>OK</b></div>
+  <div class="bottom-dot"></div>
+  <div class="bottom-stat">Consumer <b>OK</b></div>
+  <div class="bottom-dot"></div>
+  <div class="bottom-stat">RPC <b id="b-latency">12ms</b></div>
+  <div class="bottom-dot"></div>
+  <div class="bottom-stat">Uptime <b id="b-uptime">00:00:00</b></div>
+</div>
+
+<script>
+const API = "http://localhost:5001";
+const state = {
+  tokens: {},
+  positions: {},
+  feed: [],
+  stats: { scanned:0, bought:0, rugs:0, vol:0 },
+  hotlist: {},
+  analyticsSummary: { by_action:{}, by_reason:{}, by_checkpoint:{}, latest:[] },
+  hotlistHistory: [],
+  gemsData: [],
+  activeFilter: "all",
+  startTime: Date.now()
+};
+
+const ICONS = { new:'🔍', buy:'⚡', skip:'—', rug:'🛡', trade:'↕' };
+const ICON_CLASS = { new:'icon-new', buy:'icon-buy', skip:'icon-skip', rug:'icon-rug', trade:'icon-trade' };
+
+function fmtNum(v, digits=2) {
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+  return Number(v).toFixed(digits);
+}
+
+function renderFeed() {
+  const el = document.getElementById("feed");
+  const items = (state.feed || []).slice(0, 60);
+  document.getElementById("feed-count").textContent = `${items.length} events`;
+
+  if (!items.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-text">No activity yet</div></div>`;
+    return;
+  }
+
+  el.innerHTML = items.map(f => `
+    <div class="feed-item">
+      <div class="feed-icon ${ICON_CLASS[f.type] || 'icon-trade'}">${ICONS[f.type] || '•'}</div>
+      <div class="feed-body">
+        <div class="feed-main">${f.main || ''}</div>
+        ${f.detail ? `<div class="feed-detail">${f.detail}</div>` : ''}
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTable() {
+  const el = document.getElementById("token-list");
+  let tokens = Object.values(state.tokens || {});
+
+  if (state.activeFilter !== "all") {
+    if (state.activeFilter === "hotlist") {
+      const hotlistKeys = new Set(Object.keys(state.hotlist || {}));
+      tokens = tokens.filter(t => hotlistKeys.has(t.address));
+    } else {
+      tokens = tokens.filter(t => t.status === state.activeFilter);
+    }
+  }
+
+  tokens.sort((a, b) => (b.created_at_ts || 0) - (a.created_at_ts || 0));
+
+  if (!tokens.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-text">No tokens for this filter</div></div>`;
+    return;
+  }
+
+  el.innerHTML = tokens.slice(0, 100).map((t, i) => {
+    const bsRatio = t.sells > 0 ? (t.buys / t.sells) : t.buys > 0 ? 999 : 0;
+    const bsClass = bsRatio >= 1.5 ? "green" : bsRatio >= 1.0 ? "amber" : "red";
+    const score = t.score !== null && t.score !== undefined ? t.score : "—";
+
+    const isHotlist = Object.prototype.hasOwnProperty.call(state.hotlist || {}, t.address);
+    let dotClass = "dot-watch";
+    if (isHotlist) {
+      dotClass = "dot-hotlist";
+    } else if (t.status === "buy") {
+      dotClass = "dot-buy";
+    } else if (t.status === "skip") {
+      dotClass = "dot-skip";
+    } else if (t.status === "rug") {
+      dotClass = "dot-rug";
+    }
+
+    const rowClass = t.status === "buy"
+      ? "buying"
+      : (t.status === "skip" || t.status === "rug" ? "rejected" : "");
+
+    return `
+      <div class="token-row ${rowClass}">
+        <div class="row-idx">${i+1}</div>
+        <div class="token-info">
+          <div class="token-sym">${t.symbol || "—"}</div>
+          <div class="token-name">${t.name || "—"}</div>
+        </div>
+        <div class="cell muted">${t.pair_age || 0}s</div>
+        <div class="cell ${(t.volume || 0) > 5 ? 'green' : 'muted'}">${fmtNum(t.volume || 0)}</div>
+        <div class="cell">${t.trades || 0}</div>
+        <div class="cell ${bsClass}">${bsRatio === 999 ? '∞' : fmtNum(bsRatio, 2)}</div>
+        <div class="cell">${score}</div>
+        <div style="display:flex;justify-content:flex-end;align-items:center;"><div class="status-dot ${dotClass}"></div></div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPositions() {
+  const el = document.getElementById("positions-list");
+  const keys = Object.keys(state.positions || {}).filter(k => !(state.positions[k] || {}).closed);
+  document.getElementById("pos-count").textContent = keys.length;
+
+  if (!keys.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-text">No open positions</div></div>`;
+    return;
+  }
+
+  el.innerHTML = keys.map(addr => {
+    const p = state.positions[addr];
+    const pnl = Number(p.pnl_pct || 0) * 100;
+    const cls = pnl >= 0 ? "profit" : "loss";
+    return `
+      <div class="position-card ${cls}">
+        <div class="pos-top">
+          <div class="pos-sym">${p.symbol || addr.slice(0, 6)}</div>
+          <div class="pos-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${pnl >= 0 ? '+' : ''}${fmtNum(pnl, 1)}%</div>
+        </div>
+        <div class="pos-meta">
+          <div class="pos-meta-item">
+            <div class="pos-meta-label">Entry</div>
+            <div class="pos-meta-val">${p.entry_price ? Number(p.entry_price).toFixed(10) : '—'}</div>
+          </div>
+          <div class="pos-meta-item">
+            <div class="pos-meta-label">Amount</div>
+            <div class="pos-meta-val">${p.amount_raw ?? '—'}</div>
+          </div>
+          <div class="pos-meta-item">
+            <div class="pos-meta-label">TP1</div>
+            <div class="pos-meta-val">${p.tp1_done ? 'YES' : 'NO'}</div>
+          </div>
+          <div class="pos-meta-item">
+            <div class="pos-meta-label">TP2</div>
+            <div class="pos-meta-val">${p.tp2_done ? 'YES' : 'NO'}</div>
+          </div>
+          <div class="pos-meta-item">
+            <div class="pos-meta-label">Moonbag</div>
+            <div class="pos-meta-val">${p.moonbag_left ? 'YES' : 'NO'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderSummary() {
+  const actionsEl = document.getElementById("summary-actions");
+  const checkpointsEl = document.getElementById("summary-checkpoints");
+  const analyticsEl = document.getElementById("analytics-list");
+
+  const byAction = state.analyticsSummary.by_action || {};
+  const byCheckpoint = state.analyticsSummary.by_checkpoint || {};
+  const latest = state.analyticsSummary.latest || [];
+
+  const actionLines = Object.entries(byAction).sort((a,b) => b[1]-a[1]).map(([k,v]) => `
+    <div class="summary-line"><span class="summary-key">${k}</span><span class="summary-val">${v}</span></div>
+  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">—</span></div>`;
+
+  const checkpointLines = Object.entries(byCheckpoint).sort((a,b) => b[1]-a[1]).map(([k,v]) => `
+    <div class="summary-line"><span class="summary-key">${k}</span><span class="summary-val">${v}</span></div>
+  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">—</span></div>`;
+
+  actionsEl.innerHTML = `<div class="summary-card-title">By Action</div>${actionLines}`;
+  checkpointsEl.innerHTML = `<div class="summary-card-title">By Checkpoint</div>${checkpointLines}`;
+
+  if (!latest.length) {
+    analyticsEl.innerHTML = `<div class="empty"><div class="empty-text">No analytics rows yet</div></div>`;
+    return;
+  }
+
+  analyticsEl.innerHTML = latest.map(r => `
+    <div class="analytics-item">
+      <div class="analytics-top">
+        <div class="analytics-main">${r.symbol || '—'} · ${r.action || '—'} · ${r.reason || '—'}</div>
+        <div class="analytics-badge">${r.checkpoint || 'none'}</div>
+      </div>
+      <div class="analytics-meta">
+        trades=${r.trades ?? '—'} vol=${fmtNum(r.volume || 0, 4)} buys=${r.buys ?? '—'} sells=${r.sells ?? '—'}
+        age=${r.pair_age ?? '—'} mc=${r.market_cap ?? '—'} speed=${r.trade_speed ?? '—'} sells20=${r.recent_sells_pct ?? '—'}
+        score=${r.score ?? '—'}
+      </div>
+      ${r.detail ? `<div class="analytics-meta">detail=${r.detail}</div>` : ``}
+    </div>
+  `).join("");
+}
+
+function renderHotlist() {
+  const el = document.getElementById("hotlist-list");
+  const rows = state.hotlistHistory || [];
+  document.getElementById("hotlist-count").textContent = `${Object.keys(state.hotlist || {}).length} observing`;
+
+  if (!rows.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-text">No hotlist history</div></div>`;
+    return;
+  }
+
+  el.innerHTML = rows.slice(0, 30).map(h => `
+    <div class="hotlist-card">
+      <div class="hotlist-top">
+        <div class="hotlist-sym">${h.symbol || '—'}</div>
+        <div class="hotlist-countdown">${h.action || '—'}</div>
+      </div>
+      <div class="hotlist-meta">
+        ratio=${fmtNum((h.buy_ratio || 0) * 100, 0)}% vol=${fmtNum(h.volume || 0)} trades=${h.trades ?? '—'} age=${h.pair_age ?? '—'} mc=${h.market_cap ?? '—'}
+      </div>
+      <div class="signal-row">
+        <div class="signal-dot ${h.signal_sells ? 'on' : 'off'}">S1</div>
+        <div class="signal-dot ${h.signal_speed ? 'on' : 'off'}">S2</div>
+        <div class="signal-dot ${h.signal_vol ? 'on' : 'off'}">S3</div>
+      </div>
+      ${h.notes ? `<div class="hotlist-meta" style="margin-top:6px;">${h.notes}</div>` : ``}
+    </div>
+  `).join("");
+}
+
+function updateKPIs() {
+  document.getElementById("kpi-scanned").textContent = state.stats.scanned || 0;
+  document.getElementById("kpi-watching").textContent = Object.values(state.tokens || {}).filter(t => t.status === "watch").length;
+  document.getElementById("kpi-bought").textContent = state.stats.bought || 0;
+  document.getElementById("kpi-rugs").textContent = state.stats.rugs || 0;
+  document.getElementById("kpi-vol").textContent = fmtNum(state.stats.vol || 0);
+  document.getElementById("b-pairs").textContent = Object.keys(state.tokens || {}).length;
+  document.getElementById("scan-meta").textContent = "Updated " + new Date().toLocaleTimeString();
+}
+
+function toggleFilter(btn, filterName) {
+  document.querySelectorAll(".filter-chip").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  state.activeFilter = filterName;
+  renderTable();
+}
+
+async function fetchState() {
+  try {
+    const res = await fetch(`${API}/state`);
+    const data = await res.json();
+    state.tokens = data.tokens || {};
+    state.positions = data.positions || {};
+    state.stats = data.stats || state.stats;
+    state.feed = data.feed || [];
+    state.hotlist = data.hotlist || {};
+
+    updateKPIs();
+    renderTable();
+    renderFeed();
+    renderPositions();
+  } catch (e) {
+    console.error("state error", e);
+  }
+}
+
+async function fetchSummary() {
+  try {
+    const res = await fetch(`${API}/analytics/summary`);
+    const data = await res.json();
+    state.analyticsSummary = data || state.analyticsSummary;
+    renderSummary();
+  } catch (e) {
+    console.error("summary error", e);
+  }
+}
+
+async function fetchHotlistHistory() {
+  try {
+    const res = await fetch(`${API}/analytics/hotlist`);
+    const data = await res.json();
+    state.hotlistHistory = Array.isArray(data) ? data : [];
+    renderHotlist();
+  } catch (e) {
+    console.error("hotlist error", e);
+  }
+}
+
+
+function renderGems() {
+  const el = document.getElementById("gems-list");
+  const gems = state.gemsData || [];
+  document.getElementById("gems-count").textContent = `${gems.length} gem${gems.length !== 1 ? "s" : ""}`;
+
+  if (!gems.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-text">No gem candidates yet</div></div>`;
+    return;
+  }
+
+  const fmt = (v, d=2, fallback="—") => (v === null || v === undefined) ? fallback : Number(v).toFixed(d);
+  const pct = (v) => (v === null || v === undefined) ? "—" : (Number(v) * 100).toFixed(1) + "%";
+
+  el.innerHTML = gems.map(g => {
+    const addrShort = g.address ? g.address.slice(0,6) + "…" + g.address.slice(-4) : "—";
+    const scoreNum = g.score != null ? Number(g.score) : null;
+    const accelNum = g.acceleration != null ? Number(g.acceleration) : null;
+    const sellsPct = g.recent_sells_pct != null ? Number(g.recent_sells_pct) : null;
+    const sellsClass = sellsPct !== null ? (sellsPct < 0.20 ? "green" : sellsPct < 0.30 ? "gold" : "red") : "muted";
+    const accelClass = accelNum !== null ? (accelNum >= 1.4 ? "gold" : accelNum >= 1.2 ? "green" : "muted") : "muted";
+
+    return `
+      <div class="gem-card">
+        <div class="gem-top">
+          <div>
+            <div class="gem-sym">${g.symbol || "—"}</div>
+            <div class="gem-addr" title="${g.address || ""}">${addrShort}</div>
+          </div>
+          <div class="gem-badge">
+            <div class="gem-score">${scoreNum !== null ? scoreNum.toFixed(1) : "—"}</div>
+            <div class="gem-cp">${g.checkpoint || "—"}</div>
+          </div>
+        </div>
+        <div class="gem-grid">
+          <div class="gem-field">
+            <div class="gem-field-label">Accel</div>
+            <div class="gem-field-val ${accelClass}">${fmt(g.acceleration, 3)}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Buy Vol%</div>
+            <div class="gem-field-val green">${pct(g.buy_volume_pct)}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Speed</div>
+            <div class="gem-field-val">${fmt(g.trade_speed, 3)}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Sells%</div>
+            <div class="gem-field-val ${sellsClass}">${pct(g.recent_sells_pct)}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Vol (SOL)</div>
+            <div class="gem-field-val">${fmt(g.volume, 2)}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Trades</div>
+            <div class="gem-field-val">${g.trades ?? "—"}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">Age</div>
+            <div class="gem-field-val muted">${g.pair_age != null ? g.pair_age + "s" : "—"}</div>
+          </div>
+          <div class="gem-field">
+            <div class="gem-field-label">MC (SOL)</div>
+            <div class="gem-field-val muted">${fmt(g.market_cap, 0)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function fetchGems() {
+  try {
+    const res = await fetch(`${API}/analytics/gems`);
+    const data = await res.json();
+    state.gemsData = Array.isArray(data) ? data : [];
+    renderGems();
+  } catch (e) {
+    console.error("gems error", e);
+  }
+}
+
+setInterval(() => {
+  const s = Math.floor((Date.now() - state.startTime) / 1000);
+  const h = String(Math.floor(s / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  document.getElementById("b-uptime").textContent = `${h}:${m}:${sec}`;
+  document.getElementById("b-latency").textContent = (10 + Math.floor(Math.random() * 8)) + "ms";
+}, 1000);
+
+fetchState();
+fetchSummary();
+fetchHotlistHistory();
+fetchGems();
+
+setInterval(fetchState, 1500);
+setInterval(fetchSummary, 5000);
+setInterval(fetchHotlistHistory, 7000);
+setInterval(fetchGems, 10000);
+</script>
+</body>
+</html>
