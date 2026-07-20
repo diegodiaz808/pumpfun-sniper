@@ -356,7 +356,7 @@ body { min-height:100vh; display:flex; flex-direction:column; overflow-x:hidden;
   </div>
   <div class="topbar-right">
     <div class="status-chip"><div class="pulse"></div> Live</div>
-    <div class="sol-badge"><span>Balance</span> <span id="sol-balance">—</span> SOL</div>
+    <div class="sol-badge"><span>Balance</span> <span id="sol-balance">-</span> SOL</div>
   </div>
 </div>
 
@@ -497,11 +497,11 @@ const state = {
   startTime: Date.now()
 };
 
-const ICONS = { new:'🔍', buy:'⚡', skip:'—', rug:'🛡', trade:'↕' };
+const ICONS = { new:'🔍', buy:'⚡', skip:'-', rug:'🛡', trade:'↕' };
 const ICON_CLASS = { new:'icon-new', buy:'icon-buy', skip:'icon-skip', rug:'icon-rug', trade:'icon-trade' };
 
 function fmtNum(v, digits=2) {
-  if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+  if (v === null || v === undefined || Number.isNaN(Number(v))) return "-";
   return Number(v).toFixed(digits);
 }
 
@@ -549,7 +549,7 @@ function renderTable() {
   el.innerHTML = tokens.slice(0, 100).map((t, i) => {
     const bsRatio = t.sells > 0 ? (t.buys / t.sells) : t.buys > 0 ? 999 : 0;
     const bsClass = bsRatio >= 1.5 ? "green" : bsRatio >= 1.0 ? "amber" : "red";
-    const score = t.score !== null && t.score !== undefined ? t.score : "—";
+    const score = t.score !== null && t.score !== undefined ? t.score : "-";
 
     const isHotlist = Object.prototype.hasOwnProperty.call(state.hotlist || {}, t.address);
     let dotClass = "dot-watch";
@@ -571,8 +571,8 @@ function renderTable() {
       <div class="token-row ${rowClass}">
         <div class="row-idx">${i+1}</div>
         <div class="token-info">
-          <div class="token-sym">${t.symbol || "—"}</div>
-          <div class="token-name">${t.name || "—"}</div>
+          <div class="token-sym">${t.symbol || "-"}</div>
+          <div class="token-name">${t.name || "-"}</div>
         </div>
         <div class="cell muted">${t.pair_age || 0}s</div>
         <div class="cell ${(t.volume || 0) > 5 ? 'green' : 'muted'}">${fmtNum(t.volume || 0)}</div>
@@ -608,11 +608,11 @@ function renderPositions() {
         <div class="pos-meta">
           <div class="pos-meta-item">
             <div class="pos-meta-label">Entry</div>
-            <div class="pos-meta-val">${p.entry_price ? Number(p.entry_price).toFixed(10) : '—'}</div>
+            <div class="pos-meta-val">${p.entry_price ? Number(p.entry_price).toFixed(10) : '-'}</div>
           </div>
           <div class="pos-meta-item">
             <div class="pos-meta-label">Amount</div>
-            <div class="pos-meta-val">${p.amount_raw ?? '—'}</div>
+            <div class="pos-meta-val">${p.amount_raw ?? '-'}</div>
           </div>
           <div class="pos-meta-item">
             <div class="pos-meta-label">TP1</div>
@@ -643,11 +643,11 @@ function renderSummary() {
 
   const actionLines = Object.entries(byAction).sort((a,b) => b[1]-a[1]).map(([k,v]) => `
     <div class="summary-line"><span class="summary-key">${k}</span><span class="summary-val">${v}</span></div>
-  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">—</span></div>`;
+  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">-</span></div>`;
 
   const checkpointLines = Object.entries(byCheckpoint).sort((a,b) => b[1]-a[1]).map(([k,v]) => `
     <div class="summary-line"><span class="summary-key">${k}</span><span class="summary-val">${v}</span></div>
-  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">—</span></div>`;
+  `).join("") || `<div class="summary-line"><span class="summary-key">No data</span><span class="summary-val">-</span></div>`;
 
   actionsEl.innerHTML = `<div class="summary-card-title">By Action</div>${actionLines}`;
   checkpointsEl.innerHTML = `<div class="summary-card-title">By Checkpoint</div>${checkpointLines}`;
@@ -660,13 +660,13 @@ function renderSummary() {
   analyticsEl.innerHTML = latest.map(r => `
     <div class="analytics-item">
       <div class="analytics-top">
-        <div class="analytics-main">${r.symbol || '—'} · ${r.action || '—'} · ${r.reason || '—'}</div>
+        <div class="analytics-main">${r.symbol || '-'} · ${r.action || '-'} · ${r.reason || '-'}</div>
         <div class="analytics-badge">${r.checkpoint || 'none'}</div>
       </div>
       <div class="analytics-meta">
-        trades=${r.trades ?? '—'} vol=${fmtNum(r.volume || 0, 4)} buys=${r.buys ?? '—'} sells=${r.sells ?? '—'}
-        age=${r.pair_age ?? '—'} mc=${r.market_cap ?? '—'} speed=${r.trade_speed ?? '—'} sells20=${r.recent_sells_pct ?? '—'}
-        score=${r.score ?? '—'}
+        trades=${r.trades ?? '-'} vol=${fmtNum(r.volume || 0, 4)} buys=${r.buys ?? '-'} sells=${r.sells ?? '-'}
+        age=${r.pair_age ?? '-'} mc=${r.market_cap ?? '-'} speed=${r.trade_speed ?? '-'} sells20=${r.recent_sells_pct ?? '-'}
+        score=${r.score ?? '-'}
       </div>
       ${r.detail ? `<div class="analytics-meta">detail=${r.detail}</div>` : ``}
     </div>
@@ -686,11 +686,11 @@ function renderHotlist() {
   el.innerHTML = rows.slice(0, 30).map(h => `
     <div class="hotlist-card">
       <div class="hotlist-top">
-        <div class="hotlist-sym">${h.symbol || '—'}</div>
-        <div class="hotlist-countdown">${h.action || '—'}</div>
+        <div class="hotlist-sym">${h.symbol || '-'}</div>
+        <div class="hotlist-countdown">${h.action || '-'}</div>
       </div>
       <div class="hotlist-meta">
-        ratio=${fmtNum((h.buy_ratio || 0) * 100, 0)}% vol=${fmtNum(h.volume || 0)} trades=${h.trades ?? '—'} age=${h.pair_age ?? '—'} mc=${h.market_cap ?? '—'}
+        ratio=${fmtNum((h.buy_ratio || 0) * 100, 0)}% vol=${fmtNum(h.volume || 0)} trades=${h.trades ?? '-'} age=${h.pair_age ?? '-'} mc=${h.market_cap ?? '-'}
       </div>
       <div class="signal-row">
         <div class="signal-dot ${h.signal_sells ? 'on' : 'off'}">S1</div>
@@ -771,11 +771,11 @@ function renderGems() {
     return;
   }
 
-  const fmt = (v, d=2, fallback="—") => (v === null || v === undefined) ? fallback : Number(v).toFixed(d);
-  const pct = (v) => (v === null || v === undefined) ? "—" : (Number(v) * 100).toFixed(1) + "%";
+  const fmt = (v, d=2, fallback="-") => (v === null || v === undefined) ? fallback : Number(v).toFixed(d);
+  const pct = (v) => (v === null || v === undefined) ? "-" : (Number(v) * 100).toFixed(1) + "%";
 
   el.innerHTML = gems.map(g => {
-    const addrShort = g.address ? g.address.slice(0,6) + "…" + g.address.slice(-4) : "—";
+    const addrShort = g.address ? g.address.slice(0,6) + "…" + g.address.slice(-4) : "-";
     const scoreNum = g.score != null ? Number(g.score) : null;
     const accelNum = g.acceleration != null ? Number(g.acceleration) : null;
     const sellsPct = g.recent_sells_pct != null ? Number(g.recent_sells_pct) : null;
@@ -786,12 +786,12 @@ function renderGems() {
       <div class="gem-card">
         <div class="gem-top">
           <div>
-            <div class="gem-sym">${g.symbol || "—"}</div>
+            <div class="gem-sym">${g.symbol || "-"}</div>
             <div class="gem-addr" title="${g.address || ""}">${addrShort}</div>
           </div>
           <div class="gem-badge">
-            <div class="gem-score">${scoreNum !== null ? scoreNum.toFixed(1) : "—"}</div>
-            <div class="gem-cp">${g.checkpoint || "—"}</div>
+            <div class="gem-score">${scoreNum !== null ? scoreNum.toFixed(1) : "-"}</div>
+            <div class="gem-cp">${g.checkpoint || "-"}</div>
           </div>
         </div>
         <div class="gem-grid">
@@ -817,11 +817,11 @@ function renderGems() {
           </div>
           <div class="gem-field">
             <div class="gem-field-label">Trades</div>
-            <div class="gem-field-val">${g.trades ?? "—"}</div>
+            <div class="gem-field-val">${g.trades ?? "-"}</div>
           </div>
           <div class="gem-field">
             <div class="gem-field-label">Age</div>
-            <div class="gem-field-val muted">${g.pair_age != null ? g.pair_age + "s" : "—"}</div>
+            <div class="gem-field-val muted">${g.pair_age != null ? g.pair_age + "s" : "-"}</div>
           </div>
           <div class="gem-field">
             <div class="gem-field-label">MC (SOL)</div>
