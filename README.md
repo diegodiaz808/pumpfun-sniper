@@ -6,6 +6,8 @@ Autonomous trading bot for pump.fun launches on Solana. It watches new token pai
 
 **Runs with strict risk caps by design** (small position size, max exposure limit). Built as a personal research project — not financial advice, use at your own risk.
 
+![Live dashboard — pump.fun scanner, watchlist, hotlist and positions](screenshots/dashboard.png)
+
 ## Architecture
 
 ```
