@@ -1,6 +1,6 @@
 # Memecoin Sniper - Solana Pump.fun Bot
 
-> Part of the JARVIS family: see [jarvis](https://github.com/diegodiaz808/jarvis) for the full AI trading assistant.
+> Part of the Jarvis family: see [Jarvis Trader](https://github.com/diegodiaz808/jarvis) for the full AI trading assistant.
 
 Autonomous trading bot for pump.fun launches on Solana. It watches new token pairs in real time, runs them through timed evaluation checkpoints with anti-rug analysis, executes entries via Jupiter, manages positions, and streams everything to a live dashboard.
 
