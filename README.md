@@ -1,4 +1,4 @@
-# Pumpfun Sniper - Solana Memecoin Bot
+# Memecoin Sniper - Solana Pump.fun Bot
 
 > Part of the JARVIS family: see [jarvis](https://github.com/diegodiaz808/jarvis) for the full AI trading assistant.
 
